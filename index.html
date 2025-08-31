@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Árfolyamok + Fear & Greed — minimál oldal</title>
+  <meta name="description" content="USD/HUF és EUR/HUF árfolyamok (aktuális és 7 napos grafikon) + Crypto Fear & Greed Index. Minden böngészőből, szerver nélkül." />
+  <!-- Chart.js CDN (csak a grafikonokhoz) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;        /* sötét háttér */
+      --panel: #111827;     /* kártya */
+      --text: #e5e7eb;      /* fő szöveg */
+      --muted: #9ca3af;     /* halvány szöveg */
+      --acc: #22c55e;       /* kiemelés */
+      --warn: #f59e0b;      /* figyelmeztetés */
+      --err: #ef4444;       /* hiba */
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font:16px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    }
+    .wrap{max-width:1100px;margin:0 auto;padding:24px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+    h1{font-size:22px;margin:0}
+    .btn{appearance:none;border:1px solid #334155;background:#1f2937;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer}
+    .btn:active{transform:translateY(1px)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+    .card{background:var(--panel);border:1px solid #1f2937;border-radius:16px;padding:16px}
+    .row{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+    .label{color:var(--muted);font-size:13px}
+    .value{font-weight:700;font-size:26px}
+    .sub{color:var(--muted);font-size:12px}
+    canvas{width:100%;height:280px}
+    footer{margin-top:28px;color:var(--muted);font-size:14px}
+    a{color:#93c5fd}
+    .error{color:var(--err)}
+    .ok{color:var(--acc)}
+    .warn{color:var(--warn)}
+    .fg-badge{display:inline-block;border-radius:999px;padding:4px 10px;font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Árfolyamok + Fear & Greed (klikk a Frissítés gombra bármikor)</h1>
+      <button id="refreshBtn" class="btn">Frissítés</button>
+    </header>
+
+    <section class="grid" aria-label="Aktuális árfolyamok">
+      <div class="card">
+        <div class="label">Aktuális</div>
+        <div class="row"><div>USD → HUF</div><div id="usdHufNow" class="value">—</div></div>
+        <div class="sub" id="usdHufNowTime"> </div>
+      </div>
+      <div class="card">
+        <div class="label">Aktuális</div>
+        <div class="row"><div>EUR → HUF</div><div id="eurHufNow" class="value">—</div></div>
+        <div class="sub" id="eurHufNowTime"> </div>
+      </div>
+      <div class="card">
+        <div class="label">Crypto Fear & Greed</div>
+        <div class="row"><div>Index</div>
+          <div>
+            <span id="fgLabel" class="fg-badge">—</span>
+          </div>
+        </div>
+        <div class="sub" id="fgNow"> </div>
+        <div class="sub" id="fgPrev"> </div>
+      </div>
+    </section>
+
+    <section class="grid" style="margin-top:16px" aria-label="Grafikonok">
+      <div class="card">
+        <div class="row"><div class="label">Utolsó ~7 nap</div><div class="sub">USD/HUF</div></div>
+        <canvas id="usdHufChart" aria-label="USD/HUF 7 nap"></canvas>
+      </div>
+      <div class="card">
+        <div class="row"><div class="label">Utolsó ~7 nap</div><div class="sub">EUR/HUF</div></div>
+        <canvas id="eurHufChart" aria-label="EUR/HUF 7 nap"></canvas>
+      </div>
+    </section>
+
+    <footer>
+      <div>Források: <a href="https://www.frankfurter.app/" target="_blank" rel="noopener">Frankfurter API</a> (ECB árfolyamok), <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener">alternative.me</a> (Crypto Fear & Greed API).</div>
+      <div style="margin-top:10px">Hasznos linkek (szerkeszd nyugodtan):
+        <ul>
+          <li><a href="https://www.google.com/finance/quote/USD-HUF" target="_blank" rel="noopener">Google Finance: USD/HUF</a></li>
+          <li><a href="https://www.google.com/finance/quote/EUR-HUF" target="_blank" rel="noopener">Google Finance: EUR/HUF</a></li>
+          <li><a href="https://www.mnb.hu/arfolyamok" target="_blank" rel="noopener">MNB árfolyamok</a></li>
+        </ul>
+      </div>
+    </footer>
+  </div>
+
+<script>
+  // ====== Segédfüggvények ======
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => new Intl.NumberFormat('hu-HU', {maximumFractionDigits: 4}).format(n);
+  const fmtDateTime = (d) => d.toLocaleString('hu-HU', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+
+  function dateNDaysAgo(n){
+    const d = new Date(); d.setDate(d.getDate() - n); return d;
+  }
+  function toISODate(d){ return d.toISOString().slice(0,10); }
+
+  // ====== Állapot ======
+  let charts = { usd: null, eur: null };
+
+  // ====== Adatforrások ======
+  const FX_BASE = 'https://api.frankfurter.app';
+  async function fetchFxLatest(from, to){
+    // példa: /latest?from=USD&to=HUF
+    const url = `${FX_BASE}/latest?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('Árfolyam letöltési hiba');
+    return res.json();
+  }
+  async function fetchFxSeries(from, to, days=7){
+    // példa: /YYYY-MM-DD..YYYY-MM-DD?from=USD&to=HUF
+    const end = new Date();
+    const start = dateNDaysAgo(days + 1); // kicsit több nap, hétvége miatt
+    const url = `${FX_BASE}/${toISODate(start)}..${toISODate(end)}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('Idősor letöltési hiba');
+    return res.json();
+  }
+
+  const FNG_URL = 'https://api.alternative.me/fng/?limit=7&format=json';
+  async function fetchFearGreed(){
+    const res = await fetch(FNG_URL);
+    if(!res.ok) throw new Error('Fear & Greed letöltési hiba');
+    return res.json();
+  }
+
+  // ====== UI frissítők ======
+  function setNowFx(elVal, elTime, payload, code){
+    try{
+      const rate = payload.rates[code];
+      elVal.textContent = rate ? fmt(rate) : '—';
+      elTime.textContent = `Forrás dátuma (ECB): ${payload.date}`;
+    }catch(e){ elVal.textContent = '—'; elTime.textContent = '' }
+  }
+
+  function renderLineChart(canvasId, labels, data){
+    const ctx = $(canvasId).getContext('2d');
+    if(charts[canvasId]){ charts[canvasId].destroy(); }
+    // Chart.js 4 alapvonal (szín a témától függően automatikus)
+    charts[canvasId] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: canvasId.includes('usd') ? 'USD/HUF' : 'EUR/HUF',
+          data,
+          tension: 0.25,
+          fill: false,
+          pointRadius: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: { mode: 'index', intersect: false }
+        },
+        scales: {
+          x: {
+            ticks: { color: getComputedStyle(document.body).getPropertyValue('--muted') }
+          },
+          y: {
+            ticks: { color: getComputedStyle(document.body).getPropertyValue('--muted') }
+          }
+        }
+      }
+    });
+  }
+
+  function updateFearGreedBox(data){
+    const now = data.data?.[0];
+    const prev = data.data?.[1];
+    const label = $('#fgLabel');
+    const nowEl = $('#fgNow');
+    const prevEl = $('#fgPrev');
+    if(now){
+      label.textContent = `${now.value} • ${now.value_classification}`;
+      const v = parseInt(now.value, 10);
+      label.style.background = v < 25 ? 'rgba(239,68,68,.15)' : v < 45 ? 'rgba(245,158,11,.15)' : v < 55 ? 'rgba(255,255,255,.08)' : v < 75 ? 'rgba(34,197,94,.15)' : 'rgba(16,185,129,.20)';
+      label.style.border = '1px solid rgba(255,255,255,.08)';
+      nowEl.textContent = `Most: ${now.value} (${now.value_classification}), ${fmtDateTime(new Date(parseInt(now.timestamp,10)*1000))}`;
+    } else {
+      label.textContent = '—';
+      nowEl.textContent = '';
+    }
+    if(prev){
+      prevEl.textContent = `Előző: ${prev.value} (${prev.value_classification})`;
+    }
+  }
+
+  // ====== Fő frissítés ======
+  async function refreshAll(){
+    $('refreshBtn').disabled = true; $('refreshBtn').textContent = 'Frissítés…';
+    try {
+      // Aktuális
+      const [usdNow, eurNow] = await Promise.all([
+        fetchFxLatest('USD','HUF'),
+        fetchFxLatest('EUR','HUF')
+      ]);
+      setNowFx($('usdHufNow'), $('usdHufNowTime'), usdNow, 'HUF');
+      setNowFx($('eurHufNow'), $('eurHufNowTime'), eurNow, 'HUF');
+
+      // Idősorok (~7 nap)
+      const [usdSeries, eurSeries] = await Promise.all([
+        fetchFxSeries('USD','HUF', 7),
+        fetchFxSeries('EUR','HUF', 7)
+      ]);
+      const usdDates = Object.keys(usdSeries.rates).sort();
+      const usdVals  = usdDates.map(d => usdSeries.rates[d].HUF);
+      const eurDates = Object.keys(eurSeries.rates).sort();
+      const eurVals  = eurDates.map(d => eurSeries.rates[d].HUF);
+      renderLineChart('usdHufChart', usdDates, usdVals);
+      renderLineChart('eurHufChart', eurDates, eurVals);
+
+      // Fear & Greed
+      const fng = await fetchFearGreed();
+      updateFearGreedBox(fng);
+
+    } catch(err){
+      console.error(err);
+      alert('Hiba történt a frissítés közben. Lehet átmeneti hálózati gond vagy a forrás épp nem elérhető.');
+    } finally {
+      $('refreshBtn').disabled = false; $('refreshBtn').textContent = 'Frissítés';
+    }
+  }
+
+  // ====== Események ======
+  $('refreshBtn').addEventListener('click', refreshAll);
+  // Automatikus első betöltés
+  refreshAll();
+</script>
+</body>
+</html>
