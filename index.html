@@ -12,7 +12,8 @@
     .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
     .card{background:#111827;border-radius:12px;padding:16px}
     .label{color:#9ca3af;font-size:13px}
-    .value{font-weight:700;font-size:26px}
+    .value{font-weight:700;font-size:22px;margin-bottom:4px}
+    .sub{color:#9ca3af;font-size:13px}
     canvas{width:100%;height:280px}
     footer{margin-top:28px;color:#9ca3af;font-size:14px}
     a{color:#93c5fd}
@@ -39,6 +40,16 @@
       <div id="fgiNow" class="value">—</div>
       <div id="fgiRating" class="fg-badge">—</div>
       <div id="fgiDetails" class="label"></div>
+    </div>
+    <div class="card">
+      <div class="label">EU tőzsde (Xetra)</div>
+      <div id="euMarket" class="value">—</div>
+      <div id="euNext" class="sub"></div>
+    </div>
+    <div class="card">
+      <div class="label">USA tőzsde (NYSE/NASDAQ)</div>
+      <div id="usMarket" class="value">—</div>
+      <div id="usNext" class="sub"></div>
     </div>
   </section>
 
@@ -93,6 +104,38 @@
     });
   }
 
+  function marketStatus(timeZone, openHour, openMinute, closeHour, closeMinute, labelId, nextId) {
+    const now = new Date();
+    const tzNow = new Date(now.toLocaleString('en-US', { timeZone }));
+    const day = tzNow.getDay(); // 0=vasárnap, 6=szombat
+
+    const open = new Date(tzNow);
+    open.setHours(openHour, openMinute, 0, 0);
+    const close = new Date(tzNow);
+    close.setHours(closeHour, closeMinute, 0, 0);
+
+    let openNow = tzNow >= open && tzNow < close && day >=1 && day <=5;
+    if(openNow){
+      $(labelId).textContent = 'NYITVA';
+      $(nextId).textContent = '';
+    } else {
+      $(labelId).textContent = 'ZÁRVA';
+      // Következő nyitás számítása magyar idő szerint
+      let nextOpen = new Date(open);
+      if(tzNow >= close) nextOpen.setDate(nextOpen.getDate()+1);
+      while(nextOpen.getDay()===0 || nextOpen.getDay()===6){
+        nextOpen.setDate(nextOpen.getDate()+1);
+      }
+      // konvertálás magyar időre
+      const nextOpenHu = new Date(nextOpen.toLocaleString('en-US', { timeZone: 'Europe/Budapest' }));
+      const diffMs = nextOpenHu - now;
+      const diffHrs = Math.round(diffMs/36e5);
+      const timeStr = nextOpenHu.toLocaleTimeString('hu-HU',{hour:'2-digit',minute:'2-digit'});
+      const dateStr = nextOpenHu.toLocaleDateString('hu-HU',{month:'2-digit',day:'2-digit'});
+      $(nextId).textContent = `Következő nyitás: ${dateStr} ${timeStr} (≈${diffHrs} óra múlva)`;
+    }
+  }
+
   async function refreshAll(){
     $('refreshBtn').disabled=true; $('refreshBtn').innerText='Frissítés…';
     try{
@@ -125,6 +168,9 @@
       const labels = hist.map(d=> new Date(d.x).toISOString().slice(5,10));
       const vals = hist.map(d=>d.y);
       renderChart('fgiChart', labels, vals, 'CNN FGI');
+      // Market open + next
+      marketStatus('Europe/Berlin', 9,0,17,30,'euMarket','euNext');
+      marketStatus('America/New_York', 9,30,16,0,'usMarket','usNext');
     }catch(e){alert('Hiba történt: '+e)}
     $('refreshBtn').disabled=false; $('refreshBtn').innerText='Frissítés';
   }
