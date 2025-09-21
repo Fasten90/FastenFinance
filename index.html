@@ -167,9 +167,9 @@
       renderChart('eurHufChart', eurDates, eurVals, 'EUR/HUF');
       // FGI
       const fgiNow = fgi.fear_and_greed;
-      $('fgiNow').textContent = fgiNow.score;
+      $('fgiNow').textContent = fgiNow.score.toFixed(2);
       $('fgiRating').textContent = fgiNow.rating;
-      $('fgiDetails').textContent = `Előző záró: ${fgiNow.previous_close.toFixed(1)}, 1 hét: ${fgiNow.previous_1_week.toFixed(1)}, 1 hónap: ${fgiNow.previous_1_month.toFixed(1)}`;
+      $('fgiDetails').textContent = `Előző záró: ${fgiNow.previous_close.toFixed(2)}, 1 hét: ${fgiNow.previous_1_week.toFixed(2)}, 1 hónap: ${fgiNow.previous_1_month.toFixed(2)}`;
       $('fgiFill').style.width = `${fgiNow.score}%`;
       // FGI chart
       const hist = fgi.fear_and_greed_historical.data || [];
