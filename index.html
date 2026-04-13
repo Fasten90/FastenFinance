@@ -4,14 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FastenFinance</title>
-<!-- Árfolyamok + Fear & Greed — minimál oldal -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body{margin:0;background:#0f172a;color:#e5e7eb;font:16px system-ui;padding:24px}
     h1{font-size:22px;margin:0 0 16px}
     button{padding:8px 14px;border-radius:8px;border:1px solid #334155;background:#1f2937;color:#e5e7eb;cursor:pointer}
     .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
-    .card{background:#111827;border-radius:12px;padding:16px}
+    .card{background:#111827;border-radius:12px;padding:16px;position:relative}
     .label{color:#9ca3af;font-size:13px}
     .value{font-weight:700;font-size:22px;margin-bottom:4px}
     .sub{color:#9ca3af;font-size:13px}
@@ -21,25 +20,35 @@
     .fg-badge{display:inline-block;border-radius:999px;padding:4px 10px;font-weight:600}
     .fgi-bar{width:100%;height:12px;background:#374151;border-radius:6px;overflow:hidden;margin-top:8px}
     .fgi-fill{height:100%;background:linear-gradient(90deg,#22c55e,#eab308,#ef4444);}
+    .error-banner{
+      position:absolute;top:8px;right:8px;
+      background:#7f1d1d;color:#fca5a5;
+      font-size:11px;padding:2px 8px;border-radius:6px;
+    }
+    #statusBar{
+      margin:12px 0 4px;font-size:13px;min-height:20px;color:#9ca3af;
+    }
+    .ok{color:#4ade80} .warn{color:#facc15} .err{color:#f87171}
   </style>
 </head>
 <body>
-  <h1>Árfolyamok + CNN Fear & Greed Index</h1>
+  <h1>Árfolyamok + CNN Fear &amp; Greed Index</h1>
   <button id="refreshBtn">Frissítés</button>
+  <div id="statusBar"></div>
 
   <section class="grid" style="margin-top:16px">
-    <div class="card">
+    <div class="card" id="card-usd">
       <div class="label">USD → HUF</div>
       <div id="usdHufNow" class="value">—</div>
       <div id="usdHufNowTime" class="label"></div>
     </div>
-    <div class="card">
+    <div class="card" id="card-eur">
       <div class="label">EUR → HUF</div>
       <div id="eurHufNow" class="value">—</div>
       <div id="eurHufNowTime" class="label"></div>
     </div>
-    <div class="card">
-      <div class="label">CNN Fear & Greed Index</div>
+    <div class="card" id="card-fgi">
+      <div class="label">CNN Fear &amp; Greed Index</div>
       <div id="fgiNow" class="value">—</div>
       <div id="fgiRating" class="fg-badge">—</div>
       <div id="fgiDetails" class="label"></div>
@@ -58,23 +67,23 @@
   </section>
 
   <section class="grid" style="margin-top:16px">
-    <div class="card">
+    <div class="card" id="card-usdChart">
       <div class="label">~7 nap USD/HUF</div>
       <canvas id="usdHufChart"></canvas>
     </div>
-    <div class="card">
+    <div class="card" id="card-eurChart">
       <div class="label">~7 nap EUR/HUF</div>
       <canvas id="eurHufChart"></canvas>
     </div>
-    <div class="card">
-      <div class="label">Fear & Greed történet (7 nap)</div>
+    <div class="card" id="card-fgiChart">
+      <div class="label">Fear &amp; Greed történet (7 nap)</div>
       <canvas id="fgiChart"></canvas>
     </div>
   </section>
 
   <footer>
     <div>Források:</div>
-    <a href="https://www.frankfurter.app/">Frankfurter API</a>
+    <a href="https://www.frankfurter.dev/">Frankfurter API (frankfurter.dev)</a>
     <a href="https://edition.cnn.com/markets/fear-and-greed">CNN</a>
     <a href="https://www.currentmarketvaluation.com/models/buffett-indicator.php">Buffett Indicator (CMV)</a>
     <a href="https://buffettindicator.net/">Buffett Indicator (buffettindicator.net)</a>
@@ -84,23 +93,42 @@
   const $ = id => document.getElementById(id);
   const fmt = n => new Intl.NumberFormat('hu-HU', {maximumFractionDigits: 2}).format(n);
 
-  let charts = { usd:null, eur:null, fgi:null };
+  // ── ÚJ API domain: frankfurter.dev/v1 ──
+  const FX_BASE = 'https://api.frankfurter.dev/v1';
+
+  let charts = { usdHufChart:null, eurHufChart:null, fgiChart:null };
+
+  function setCardError(cardId, msg) {
+    const card = $(cardId);
+    if(!card) return;
+    let banner = card.querySelector('.error-banner');
+    if(!banner){ banner = document.createElement('div'); banner.className='error-banner'; card.appendChild(banner); }
+    banner.textContent = msg;
+  }
+  function clearCardError(cardId) {
+    const card = $(cardId);
+    if(!card) return;
+    const banner = card.querySelector('.error-banner');
+    if(banner) banner.remove();
+  }
+
+  async function safeFetch(url) {
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
 
   async function fetchFxLatest(from, to){
-    const res = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}`);
-    return res.json();
+    return safeFetch(`${FX_BASE}/latest?from=${from}&to=${to}`);
   }
   async function fetchFxSeries(from, to, days=7){
     const end = new Date();
     const start = new Date(); start.setDate(end.getDate()-days-1);
-    const res = await fetch(`https://api.frankfurter.app/${start.toISOString().slice(0,10)}..${end.toISOString().slice(0,10)}?from=${from}&to=${to}`);
-    return res.json();
+    return safeFetch(`${FX_BASE}/${start.toISOString().slice(0,10)}..${end.toISOString().slice(0,10)}?from=${from}&to=${to}`);
   }
-
-  async function fetchStockFearGreed(){
+  async function fetchFearGreed(){
     const today = new Date().toISOString().slice(0,10);
-    const res = await fetch(`https://production.dataviz.cnn.io/index/fearandgreed/graphdata/${today}`);
-    return res.json();
+    return safeFetch(`https://production.dataviz.cnn.io/index/fearandgreed/graphdata/${today}`);
   }
 
   function renderChart(canvasId, labels, data, label){
@@ -115,25 +143,18 @@
   function marketStatus(timeZone, openHour, openMinute, closeHour, closeMinute, labelId, nextId) {
     const now = new Date();
     const tzNow = new Date(now.toLocaleString('en-US', { timeZone }));
-    const day = tzNow.getDay(); // 0=vasárnap, 6=szombat
-
-    const open = new Date(tzNow);
-    open.setHours(openHour, openMinute, 0, 0);
-    const close = new Date(tzNow);
-    close.setHours(closeHour, closeMinute, 0, 0);
-
-    let openNow = tzNow >= open && tzNow < close && day >=1 && day <=5;
+    const day = tzNow.getDay();
+    const open = new Date(tzNow); open.setHours(openHour, openMinute, 0, 0);
+    const close = new Date(tzNow); close.setHours(closeHour, closeMinute, 0, 0);
+    let openNow = tzNow >= open && tzNow < close && day >= 1 && day <= 5;
     if(openNow){
       $(labelId).textContent = 'NYITVA';
       $(nextId).textContent = '';
     } else {
       $(labelId).textContent = 'ZÁRVA';
-      // Következő nyitás számítása magyar idő szerint
       let nextOpen = new Date(open);
       if(tzNow >= close) nextOpen.setDate(nextOpen.getDate()+1);
-      while(nextOpen.getDay()===0 || nextOpen.getDay()===6){
-        nextOpen.setDate(nextOpen.getDate()+1);
-      }
+      while(nextOpen.getDay()===0 || nextOpen.getDay()===6) nextOpen.setDate(nextOpen.getDate()+1);
       const nextOpenHu = new Date(nextOpen.toLocaleString('en-US', { timeZone: 'Europe/Budapest' }));
       const diffMs = nextOpenHu - now;
       const diffHrs = Math.round(diffMs/36e5);
@@ -144,43 +165,93 @@
   }
 
   async function refreshAll(){
-    $('refreshBtn').disabled=true; $('refreshBtn').innerText='Frissítés…';
-    try{
-      const [usdNow, eurNow, usdSeries, eurSeries, fgi] = await Promise.all([
-        fetchFxLatest('USD','HUF'),
-        fetchFxLatest('EUR','HUF'),
-        fetchFxSeries('USD','HUF'),
-        fetchFxSeries('EUR','HUF'),
-        fetchStockFearGreed()
-      ]);
-      // FX now
-      $('usdHufNow').textContent = fmt(usdNow.rates.HUF);
-      $('usdHufNowTime').textContent = `Forrás dátum: ${usdNow.date}`;
-      $('eurHufNow').textContent = fmt(eurNow.rates.HUF);
-      $('eurHufNowTime').textContent = `Forrás dátum: ${eurNow.date}`;
-      // FX chart
-      const usdDates = Object.keys(usdSeries.rates).sort();
-      const usdVals = usdDates.map(d=>usdSeries.rates[d].HUF);
-      renderChart('usdHufChart', usdDates, usdVals, 'USD/HUF');
-      const eurDates = Object.keys(eurSeries.rates).sort();
-      const eurVals = eurDates.map(d=>eurSeries.rates[d].HUF);
-      renderChart('eurHufChart', eurDates, eurVals, 'EUR/HUF');
-      // FGI
-      const fgiNow = fgi.fear_and_greed;
-      $('fgiNow').textContent = fgiNow.score.toFixed(2);
-      $('fgiRating').textContent = fgiNow.rating;
-      $('fgiDetails').textContent = `Előző záró: ${fgiNow.previous_close.toFixed(2)}, 1 hét: ${fgiNow.previous_1_week.toFixed(2)}, 1 hónap: ${fgiNow.previous_1_month.toFixed(2)}`;
-      $('fgiFill').style.width = `${fgiNow.score}%`;
-      // FGI chart
-      const hist = fgi.fear_and_greed_historical.data || [];
+    $('refreshBtn').disabled = true;
+    $('refreshBtn').innerText = 'Frissítés…';
+    $('statusBar').innerHTML = 'Betöltés…';
+
+    // Promise.allSettled: minden kérés független, hiba esetén sem dob el másokat
+    const [usdNow, eurNow, usdSeries, eurSeries, fgi] = await Promise.allSettled([
+      fetchFxLatest('USD','HUF'),
+      fetchFxLatest('EUR','HUF'),
+      fetchFxSeries('USD','HUF'),
+      fetchFxSeries('EUR','HUF'),
+      fetchFearGreed()
+    ]);
+
+    const results = [];
+
+    // USD most
+    if(usdNow.status==='fulfilled'){
+      clearCardError('card-usd');
+      $('usdHufNow').textContent = fmt(usdNow.value.rates.HUF);
+      $('usdHufNowTime').textContent = `Forrás dátum: ${usdNow.value.date}`;
+      results.push('<span class="ok">✓ USD/HUF</span>');
+    } else {
+      setCardError('card-usd', 'Nem elérhető');
+      $('usdHufNow').textContent = '—';
+      results.push('<span class="err">✗ USD/HUF: '+usdNow.reason+'</span>');
+    }
+
+    // EUR most
+    if(eurNow.status==='fulfilled'){
+      clearCardError('card-eur');
+      $('eurHufNow').textContent = fmt(eurNow.value.rates.HUF);
+      $('eurHufNowTime').textContent = `Forrás dátum: ${eurNow.value.date}`;
+      results.push('<span class="ok">✓ EUR/HUF</span>');
+    } else {
+      setCardError('card-eur', 'Nem elérhető');
+      $('eurHufNow').textContent = '—';
+      results.push('<span class="err">✗ EUR/HUF: '+eurNow.reason+'</span>');
+    }
+
+    // USD chart
+    if(usdSeries.status==='fulfilled'){
+      clearCardError('card-usdChart');
+      const dates = Object.keys(usdSeries.value.rates).sort();
+      renderChart('usdHufChart', dates, dates.map(d=>usdSeries.value.rates[d].HUF), 'USD/HUF');
+    } else {
+      setCardError('card-usdChart', 'Grafikon nem elérhető');
+    }
+
+    // EUR chart
+    if(eurSeries.status==='fulfilled'){
+      clearCardError('card-eurChart');
+      const dates = Object.keys(eurSeries.value.rates).sort();
+      renderChart('eurHufChart', dates, dates.map(d=>eurSeries.value.rates[d].HUF), 'EUR/HUF');
+    } else {
+      setCardError('card-eurChart', 'Grafikon nem elérhető');
+    }
+
+    // FGI
+    if(fgi.status==='fulfilled'){
+      clearCardError('card-fgi');
+      clearCardError('card-fgiChart');
+      const now = fgi.value.fear_and_greed;
+      $('fgiNow').textContent = now.score.toFixed(2);
+      $('fgiRating').textContent = now.rating;
+      $('fgiDetails').textContent = `Előző záró: ${now.previous_close.toFixed(2)}, 1 hét: ${now.previous_1_week.toFixed(2)}, 1 hónap: ${now.previous_1_month.toFixed(2)}`;
+      $('fgiFill').style.width = `${now.score}%`;
+      const hist = fgi.value.fear_and_greed_historical?.data || [];
       const labels = hist.map(d=> new Date(d.x).toISOString().slice(5,10));
       const vals = hist.map(d=>d.y);
       renderChart('fgiChart', labels, vals, 'CNN FGI');
-      // Market open + next
-      marketStatus('Europe/Berlin', 9,0,17,30,'euMarket','euNext');
-      marketStatus('America/New_York', 9,30,16,0,'usMarket','usNext');
-    }catch(e){alert('Hiba történt: '+e)}
-    $('refreshBtn').disabled=false; $('refreshBtn').innerText='Frissítés';
+      results.push('<span class="ok">✓ Fear &amp; Greed</span>');
+    } else {
+      setCardError('card-fgi', 'Nem elérhető');
+      setCardError('card-fgiChart', 'Grafikon nem elérhető');
+      $('fgiNow').textContent = '—';
+      $('fgiRating').textContent = '—';
+      results.push('<span class="warn">⚠ FGI: '+fgi.reason+'</span>');
+    }
+
+    // Tőzsde státusz (mindig működik, lokális számítás)
+    marketStatus('Europe/Berlin',   9,  0, 17, 30, 'euMarket', 'euNext');
+    marketStatus('America/New_York', 9, 30, 16,  0, 'usMarket', 'usNext');
+
+    const ts = new Date().toLocaleTimeString('hu-HU',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    $('statusBar').innerHTML = `Utolsó frissítés: ${ts} &nbsp;|&nbsp; ` + results.join(' &nbsp; ');
+    $('refreshBtn').disabled = false;
+    $('refreshBtn').innerText = 'Frissítés';
   }
 
   $('refreshBtn').addEventListener('click', refreshAll);
