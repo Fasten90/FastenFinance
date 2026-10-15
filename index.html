@@ -15,7 +15,9 @@
     .value{font-weight:700;font-size:22px;margin-bottom:4px}
     .sub{color:#9ca3af;font-size:13px}
     canvas{width:100%;height:280px}
-    footer{margin-top:28px;color:#9ca3af;font-size:14px}
+    footer{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:28px;color:#9ca3af;font-size:14px}
+    .footer-group{background:#111827;border-radius:10px;padding:14px}
+    .footer-group h2{margin:0 0 10px;color:#e5e7eb;font-size:15px}
     a{color:#93c5fd;display:block;margin-bottom:4px}
     .fg-badge{display:inline-block;border-radius:999px;padding:4px 10px;font-weight:600}
     .fgi-bar{width:100%;height:12px;background:#374151;border-radius:6px;overflow:hidden;margin-top:8px}
@@ -82,42 +84,62 @@
   </section>
 
   <footer>
-    <div>Fő  oldalak</div>
-    <a href="https://www.google.com/finance/">Google Finance</a>
-    <a href="https://finance.yahoo.com/">Yahoo Finance</a>
-    <div>Források:</div>
-    <a href="https://www.frankfurter.dev/">Frankfurter API (frankfurter.dev)</a>
-    <a href="https://edition.cnn.com/markets/fear-and-greed">CNN</a>
-    <a href="https://www.currentmarketvaluation.com/models/buffett-indicator.php">Buffett Indicator (CMV)</a>
-    <a href="https://buffettindicator.net/">Buffett Indicator (buffettindicator.net)</a>
-    </br>
-    <div>Olvasnivalók</div>
-    <a href="https://zsiday.hu/">Zsiday Viktor blogja</a>
-    <a href="https://www.bamosz.hu/legfrissebb-adatok">BAMOSZ</a>
-    <a href="https://www.revolut.com/hu-HU/">Revolut</a>
-    <a href="https://hiventures.hu/">Hiventures</a>
-    <a href="https://xprojekt.hu/">Xproject</a>
-    <a href="https://strt.hu/">STRT</a>
-    <a href="https://startuponline.hu/">Startuponline</a>
-    <a href="https://brancskozosseg.hu/">Brancsközösség (.hu)</a>
-    <a href="https://brancskozosseg.net/">Brancsközösség (.net)</a>
-    <a href="https://tokeportal.com/hu/">Tőkeportál</a>
-	
-    <div>Egyéb</div>
-	  <a href="https://www.bet.hu/">BÉT</a>
-	  <a href="https://www.bet.hu/site/Magyar/tartalmak>BÉT - magyar tartalmak</a>
-    <a href="https://arveres.nav.gov.hu/">NAV - Árveres</a>
-    <a href="https://arveres.nav.gov.hu/index-meghirdetesek-ingatlan.html">NAV - Árveres - Meghirdetések ingatlanokra</a>
-    <a href="https://adozona.hu/">Adózona</a>
-
-    <div>TODO</div>
-    <a href="https://production.dataviz.cnn.io/index/fearandgreed/graphdata/2025-08-31">CNN Fear & Greed Index - TODO</a>
-    <a href="https://feargreedmeter.com/">Fear & Greed Meter</a>
-    <a href="https://www.perplexity.ai/finance?_sm_nck=1">Perplexity Finance</a>
-
-    <div>App</div>
-    <a href="https://app.getquin.com/en/login">Quin App</a>
-		
+    <section class="footer-group">
+      <h2>Piaci oldalak</h2>
+      <a href="https://www.google.com/finance/">Google Finance</a>
+      <a href="https://finance.yahoo.com/">Yahoo Finance</a>
+    </section>
+    <section class="footer-group">
+      <h2>Források és mutatók</h2>
+      <a href="https://www.frankfurter.dev/">Frankfurter API</a>
+      <a href="https://edition.cnn.com/markets/fear-and-greed">CNN Fear &amp; Greed Index</a>
+      <a href="https://www.currentmarketvaluation.com/models/buffett-indicator.php">Buffett Indicator (CMV)</a>
+      <a href="https://buffettindicator.net/">Buffett Indicator</a>
+    </section>
+    <section class="footer-group">
+      <h2>Blogok</h2>
+      <a href="https://zsiday.hu/">Zsiday Viktor blogja</a>
+      <a href="https://adamonfire.hu/">Ádám blogja (Adam on Fire)</a>
+      <a href="https://www.szamveto.hu/">Dani blogja (Számvető)</a>
+    </section>
+    <section class="footer-group">
+      <h2>Befektetési oldalak</h2>
+      <a href="https://www.bamosz.hu/legfrissebb-adatok">BAMOSZ – legfrissebb adatok</a>
+      <a href="https://www.revolut.com/hu-HU/">Revolut</a>
+      <a href="https://hiventures.hu/">Hiventures</a>
+      <a href="https://xprojekt.hu/">Xprojekt</a>
+      <a href="https://strt.hu/">STRT</a>
+      <a href="https://startuponline.hu/">Startuponline</a>
+      <a href="https://brancskozosseg.hu/">Brancsközösség</a>
+      <a href="https://brancskozosseg.net/">Brancsközösség (.net)</a>
+      <a href="https://tokeportal.com/hu/">Tőkeportál</a>
+    </section>
+    <section class="footer-group">
+      <h2>Egyéb befektetések</h2>
+      <a href="https://polymarket.com/">Polymarket</a>
+    </section>
+    <section class="footer-group">
+      <h2>Nyugdíj- és pénztári oldalak</h2>
+      <a href="https://adamonfire.hu/pension">Ádám nyugdíjkalkulátora</a>
+      <a href="https://www.allamkincstar.gov.hu/nyugdij/sajat-jogu-ellatasok/oregsegi-nyugdij/onkiszolgalo-nyugdijkalkulator">Államkincstár nyugdíjkalkulátora</a>
+      <a href="https://www.onkentesnyugdijpenztar.hu/">Önkéntes Nyugdíjpénztár</a>
+      <a href="https://egeszsegpenztarak.hu/">Egészségpénztárak</a>
+    </section>
+    <section class="footer-group">
+      <h2>Egyéb</h2>
+      <a href="https://eszlaweb.mnb.hu/">MNB ÉSZLA</a>
+      <a href="https://www.bet.hu/">Budapesti Értéktőzsde (BÉT)</a>
+      <a href="https://www.bet.hu/site/Magyar/tartalmak">BÉT – magyar tartalmak</a>
+      <a href="https://arveres.nav.gov.hu/">NAV Árverés</a>
+      <a href="https://arveres.nav.gov.hu/index-meghirdetesek-ingatlan.html">NAV – meghirdetett ingatlanok</a>
+      <a href="https://adozona.hu/">Adózóna</a>
+    </section>
+    <section class="footer-group">
+      <h2>További eszközök</h2>
+      <a href="https://feargreedmeter.com/">Fear &amp; Greed Meter</a>
+      <a href="https://www.perplexity.ai/finance?_sm_nck=1">Perplexity Finance</a>
+      <a href="https://app.getquin.com/en/login">Getquin</a>
+    </section>
   </footer>
 
 <script>
