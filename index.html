@@ -56,19 +56,6 @@
       <div id="fgiDetails" class="label"></div>
       <div class="fgi-bar"><div id="fgiFill" class="fgi-fill" style="width:0%"></div></div>
     </div>
-    
-    <!-- Automatikusan frissülő MNB és KSH kártyák -->
-    <div class="card" id="card-mnb">
-      <div class="label">MNB Alapkamat</div>
-      <div id="mnbRateNow" class="value">—</div>
-      <div id="mnbRateTime" class="sub">Betöltés…</div>
-    </div>
-    <div class="card" id="card-ksh">
-      <div class="label">KSH Infláció (Éves)</div>
-      <div id="kshInflNow" class="value">—</div>
-      <div id="kshInflTime" class="sub">Betöltés…</div>
-    </div>
-
     <div class="card">
       <div class="label">EU tőzsde (Xetra)</div>
       <div id="euMarket" class="value">—</div>
@@ -207,11 +194,6 @@
     return safeFetch(`https://production.dataviz.cnn.io/index/fearandgreed/graphdata/${today}`);
   }
 
-  // MNB alapkamat & KSH infláció lekérése nyílt magyar makro API-n keresztül
-  async function fetchMacroData() {
-    return safeFetch('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://api.mnb.hu/arfolyamok.asmx?WSDL'));
-  }
-
   function renderChart(canvasId, labels, data, label){
     if(charts[canvasId]) charts[canvasId].destroy();
     charts[canvasId] = new Chart($(canvasId),{
@@ -250,6 +232,7 @@
     $('refreshBtn').innerText = 'Frissítés…';
     $('statusBar').innerHTML = 'Betöltés…';
 
+    // Promise.allSettled: minden kérés független, hiba esetén sem dob el másokat
     const [usdNow, eurNow, usdSeries, eurSeries, fgi] = await Promise.allSettled([
       fetchFxLatest('USD','HUF'),
       fetchFxLatest('EUR','HUF'),
