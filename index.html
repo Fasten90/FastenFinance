@@ -77,10 +77,6 @@
       <div class="label">~7 nap EUR/HUF</div>
       <canvas id="eurHufChart"></canvas>
     </div>
-    <div class="card" id="card-fgiChart">
-      <div class="label">Fear &amp; Greed történet (7 nap)</div>
-      <canvas id="fgiChart"></canvas>
-    </div>
   </section>
 
   <footer>
@@ -161,7 +157,7 @@
   // ── ÚJ API domain: frankfurter.dev/v1 ──
   const FX_BASE = 'https://api.frankfurter.dev/v1';
 
-  let charts = { usdHufChart:null, eurHufChart:null, fgiChart:null };
+  let charts = { usdHufChart:null, eurHufChart:null };
 
   function setCardError(cardId, msg) {
     const card = $(cardId);
@@ -290,27 +286,21 @@
     // FGI
     if(fgi.status==='fulfilled'){
       clearCardError('card-fgi');
-      clearCardError('card-fgiChart');
       const now = fgi.value.fear_and_greed;
       $('fgiNow').textContent = now.score.toFixed(2);
       $('fgiRating').textContent = now.rating;
       $('fgiDetails').textContent = `Előző záró: ${now.previous_close.toFixed(2)}, 1 hét: ${now.previous_1_week.toFixed(2)}, 1 hónap: ${now.previous_1_month.toFixed(2)}`;
       $('fgiFill').style.width = `${now.score}%`;
-      const hist = fgi.value.fear_and_greed_historical?.data || [];
-      const labels = hist.map(d=> new Date(d.x).toISOString().slice(5,10));
-      const vals = hist.map(d=>d.y);
-      renderChart('fgiChart', labels, vals, 'CNN FGI');
       results.push('<span class="ok">✓ Fear &amp; Greed</span>');
     } else {
       setCardError('card-fgi', 'Nem elérhető');
-      setCardError('card-fgiChart', 'Grafikon nem elérhető');
       $('fgiNow').textContent = '—';
       $('fgiRating').textContent = '—';
       results.push('<span class="warn">⚠ FGI: '+fgi.reason+'</span>');
     }
 
     // Tőzsde státusz (mindig működik, lokális számítás)
-    marketStatus('Europe/Berlin',   9,  0, 17, 30, 'euMarket', 'euNext');
+    marketStatus('Europe/Berlin',    9,  0, 17, 30, 'euMarket', 'euNext');
     marketStatus('America/New_York', 9, 30, 16,  0, 'usMarket', 'usNext');
 
     const ts = new Date().toLocaleTimeString('hu-HU',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
