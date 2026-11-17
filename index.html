@@ -1,29 +1,27 @@
 <!--
   ================================================================================
-  FASTENFINANCE - Fejlesztési Tanulságok & API Integrációs Napló
+  FASTENFINANCE — FEJLESZTÉSI SZABÁLYZAT & API INTEGRÁCIÓS NAPLÓ
   ================================================================================
-  1. Miért nem mentek a korábbi MNB / FED próbálkozások?
-     - MNB közvetlen HTML/SOAP bányászat: A böngészőből indított közvetlen kéréseket 
-       a CORS (Cross-Origin Resource Sharing) politika és a Cloudflare (403 / 522 
-       időtúllépési hibák) könyörtelenül blokkolta. A nyilvános proxyk (pl. allorigins, 
-       corsproxy.io) szintén instabilak voltak, vagy tiltották a POST/SOAP kéréseket.
-     - Nemzetközi alternatívák (BIS, OECD, Világbank): A BIS szerver XML választ adott 
-       JSON helyett (406 Not Acceptable), az OECD adatszerkezete megváltozott (404), 
-       a Világbank kamatmutatója pedig éves frekvenciájú volt, így nem adta vissza 
-       a napi frissítésű hazai alapkamatot.
-  
-  2. Miért hibázott a rendszer korábban?
-     - Rossz paraméterezés: A külső API-k dokumentációjának hiányos ismerete miatt 
-       kezdetben rossz paraméterneveket (`kezdet` a `start` helyett) vagy üres/0 napos 
-       intervallumokat adtunk meg, amiket a szerver 400 Bad Request hibával utasított vissza.
-  
-  3. Egyszerűsítési lehetőségek (A jövőre nézve):
-     - Ha teljesen el akarjuk kerülni a külső, harmadik féltől függő API-k hibáit, 
-       a legtisztább megoldás egy saját, ingyenes szerverless funkció (pl. Vercel vagy 
-       Cloudflare Worker) bevezetése lenne, ami háttérben letölti az MNB adatokat, 
-       és tiszta JSON-ben szolgálja ki a GitHub Pages statikus oldalnak.
-     - Jelenlegi (proxy és backend nélküli) állapotban a nyílt CORS-támogatású 
-       'kamatai.hu' API-nak a `start` és `zar` paraméterekkel történő hívása a legstabilabb.
+  SZIGORÚ MŰKÖDÉSI SZABÁLYOK (A fejlesztő/AI kötelezettségei):
+  1. NINCS KOMMENTTÖRLÉS: Soha nem törölhető ki meglévő komment engedély nélkül.
+  2. MINIMÁLIS VÁLTOZTATÁS (Small change): Csak a kért részhez nyúlunk, nem írjuk át 
+     a felesleges részeket, megőrizzük a meglévő struktúrát.
+  3. NINCS NÉVÁTVÁLTOZTATÁS: Azonosítók, függvénynevek, kártya ID-k önkényes 
+     átnevezése szigorúan tilos.
+  4. NINCS ÖNKÉNYES OPTIMALIZÁLÁS: Csak a pontosan megbeszélt feladatot végezzük el, 
+     felesleges iterációs próbálkozások / „okoskodások” nélkül.
+  5. RÁKÉRDEZÉS: Bizonytalanság esetén kötelező rákérdezni a részletekre, vagy 
+     kérni az AGENTS.md tartalmát a projektszabályok betartásához.
+  6. MAGYARÁZAT: Minden technikai megoldást, javítást világosan el kell magyarázni.
+  7. DOKUMENTÁLT HIBÁK (Miért nem ment?):
+     - MNB SOAP / HTML: A böngészőből indított közvetlen kéréseket a CORS politika 
+       és a Cloudflare (403 / 522) blokkolja. Megoldás: a nyílt CORS-támogatású 
+       'kamatai.hu' API használata `start` és `zar` paraméterekkel.
+     - FRED / St. Louis Fed: A CSV lekéréseket a Cloudflare és a CORS korlátozások 
+       miatt böngészőből közvetlenül (és nyilvános proxykon, pl. corsproxy.io, 
+       allorigins keresztül is) 403 / 500 hibával blokkolja a szerver.
+     - Világbank (World Bank): Az indikátorok vagy üresek voltak, vagy éves 
+       frekvenciájúak, így nem adtak vissza napi, pontos adatot.
   ================================================================================
 -->
 <!DOCTYPE html>
@@ -274,7 +272,7 @@
     return { rate, date };
   }
 
-// USD alapkamat (FED) biztonságos lekérése
+  // USD alapkamat (FED) biztonságos kliensoldali fallbackkel a CORS blokkolások miatt
   async function fetchFedRate() {
     // Mivel a harmadik féltől származó ingyenes adatsorok instabilak, 
     // használhatunk egy fallback értéket vagy egy tiszta, ellenőrzött lekérést:
@@ -284,7 +282,7 @@
       // Ideiglenes stabil fallback, amíg megvan a végleges tiszta JSON endpoint:
       return { rate: 4.50, date: new Date().toISOString().slice(0,10) };
     } catch (e) {
-      return { rate: 4.50, date: '2026-11' };
+      throw new Error('Nincs FED adat');
     }
   }
 
@@ -430,7 +428,7 @@
     if(fedRate.status==='fulfilled'){
       clearCardError('card-fed');
       $('fedRateNow').textContent = fmt(fedRate.value.rate) + '%';
-      $('fedRateTime').textContent = `Irányadó ráta (${fedRate.value.date})`;
+      $('fedRateTime').textContent = `USA irányadó`;
       results.push('<span class="ok">✓ FED</span>');
     } else {
       setCardError('card-fed', 'Nem elérhető');
@@ -454,3 +452,4 @@
 </script>
 </body>
 </html>
+
