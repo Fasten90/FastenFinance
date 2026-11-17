@@ -3,24 +3,24 @@
   FASTENFINANCE — FEJLESZTÉSI SZABÁLYZAT & API INTEGRÁCIÓS NAPLÓ
   ================================================================================
   SZIGORÚ MŰKÖDÉSI SZABÁLYOK (A fejlesztő/AI kötelezettségei):
-  1. NINCS KOMMENTTÖRLÉS: Soha nem törölhető ki meglévő komment engedély nélkül.
-  2. MINIMÁLIS VÁLTOZTATÁS (Small change): Csak a kért részhez nyúlunk, nem írjuk át 
+1. NINCS KOMMENTTÖRLÉS: Soha nem törölhető ki meglévő komment engedély nélkül.
+2. MINIMÁLIS VÁLTOZTATÁS (Small change): Csak a kért részhez nyúlunk, nem írjuk át 
      a felesleges részeket, megőrizzük a meglévő struktúrát.
-  3. NINCS NÉVÁTVÁLTOZTATÁS: Azonosítók, függvénynevek, kártya ID-k önkényes 
+3. NINCS NÉVÁTVÁLTOZTATÁS: Azonosítók, függvénynevek, kártya ID-k önkényes 
      átnevezése szigorúan tilos.
-  4. NINCS ÖNKÉNYES OPTIMALIZÁLÁS: Csak a pontosan megbeszélt feladatot végezzük el, 
+4. NINCS ÖNKÉNYES OPTIMALIZÁLÁS: Csak a pontosan megbeszélt feladatot végezzük el, 
      felesleges iterációs próbálkozások / „okoskodások” nélkül.
-  5. RÁKÉRDEZÉS: Bizonytalanság esetén kötelező rákérdezni a részletekre, vagy 
+5. RÁKÉRDEZÉS: Bizonytalanság esetén kötelező rákérdezni a részletekre, vagy 
      kérni az AGENTS.md tartalmát a projektszabályok betartásához.
-  6. MAGYARÁZAT: Minden technikai megoldást, javítást világosan el kell magyarázni.
-  7. DOKUMENTÁLT HIBÁK (Miért nem ment?):
-     - MNB SOAP / HTML: A böngészőből indított közvetlen kéréseket a CORS politika 
+6. MAGYARÁZAT: Minden technikai megoldást, javítást világosan el kell magyarázni.
+7. DOKUMENTÁLT HIBÁK (Miért nem ment?):
+- MNB SOAP / HTML: A böngészőből indított közvetlen kéréseket a CORS politika 
        és a Cloudflare (403 / 522) blokkolja. Megoldás: a nyílt CORS-támogatású 
        'kamatai.hu' API használata `start` és `zar` paraméterekkel.
-     - FRED / St. Louis Fed: A CSV lekéréseket a Cloudflare és a CORS korlátozások 
+- FRED / St. Louis Fed: A CSV lekéréseket a Cloudflare és a CORS korlátozások 
        miatt böngészőből közvetlenül (és nyilvános proxykon, pl. corsproxy.io, 
        allorigins keresztül is) 403 / 500 hibával blokkolja a szerver.
-     - Világbank (World Bank): Az indikátorok vagy üresek voltak, vagy éves 
+- Világbank (World Bank): Az indikátorok vagy üresek voltak, vagy éves 
        frekvenciájúak, így nem adtak vissza napi, pontos adatot.
   ================================================================================
 -->
@@ -260,7 +260,7 @@
     return { rate, date: ma };
   }
 
-  // EKB betéti ráta (natív JSON API)
+  // EKB kamat
   async function fetchEcbRate() {
     const url = 'https://data-api.ecb.europa.eu/service/data/FM/B.U2.EUR.4F.KR.DFR.LEV?lastNObservations=1&format=jsondata';
     const data = await safeFetch(url);
@@ -428,7 +428,7 @@
     if(fedRate.status==='fulfilled'){
       clearCardError('card-fed');
       $('fedRateNow').textContent = fmt(fedRate.value.rate) + '%';
-      $('fedRateTime').textContent = `USA irányadó`;
+      $('fedRateTime').textContent = `Irányadó ráta (${fedRate.value.date})`;
       results.push('<span class="ok">✓ FED</span>');
     } else {
       setCardError('card-fed', 'Nem elérhető');
